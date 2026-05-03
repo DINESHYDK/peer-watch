@@ -140,6 +140,30 @@ export interface Database {
         }
         Update: Partial<Database['public']['Tables']['peer_ratings']['Insert']>
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          group_id: string | null
+          type: string
+          content: string
+          is_read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          group_id?: string | null
+          type: string
+          content: string
+          is_read?: boolean
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['notifications']['Insert']>
+      }
+    }
+    Views: {
+      [_ in never]: never
     }
     Functions: {
       submit_peer_rating: {
@@ -154,6 +178,12 @@ export interface Database {
         Returns: void
       }
     }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
 }
 
@@ -164,6 +194,7 @@ export type GroupMemberRow   = Database['public']['Tables']['group_members']['Ro
 export type TaskRow          = Database['public']['Tables']['tasks']['Row']
 export type DailySummaryRow  = Database['public']['Tables']['daily_summaries']['Row']
 export type PeerRatingRow    = Database['public']['Tables']['peer_ratings']['Row']
+export type NotificationRow  = Database['public']['Tables']['notifications']['Row']
 
 // ── Enriched Types (with joins) ────────────────────────────────
 export interface MemberWithTasks extends UserRow {
