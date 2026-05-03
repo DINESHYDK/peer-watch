@@ -3,8 +3,10 @@ import FullCalendar from '@fullcalendar/react'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { DateSelectArg, EventClickArg, EventChangeArg, EventInput } from '@fullcalendar/core'
+import { CalendarDays, CheckCircle2, Circle, Info } from 'lucide-react'
 import { AddTaskForm } from './AddTaskForm'
 import { useUpdateTaskTime, useToggleTask } from '@/hooks/useTasks'
+import { useTimetable } from '@/hooks/useTimetable'
 import type { TaskRow } from '@/types/database.types'
 import { hardnessColor } from '@/lib/scoring'
 
@@ -16,42 +18,29 @@ interface DayTimelineProps {
 
 interface PopoverState {
   visible: boolean
-  x: number
-  y: number
   startTime: string
   endTime: string
 }
 
 function toHHMM(date: Date): string {
-  return date.toTimeString().slice(0, 5) // "HH:MM"
+  return date.toTimeString().slice(0, 5)
 }
 
-function taskToEvent(task: TaskRow): EventInput {
-  if (!task.start_time || !task.end_time) return null as unknown as EventInput
-
+function taskToEvent(task: TaskRow): EventInput | null {
+  if (!task.start_time || !task.end_time) return null
   const [sh, sm] = task.start_time.split(':').map(Number)
   const [eh, em] = task.end_time.split(':').map(Number)
-
   const base = new Date(task.date)
-  const start = new Date(base)
-  start.setHours(sh, sm, 0, 0)
-  const end = new Date(base)
-  end.setHours(eh, em, 0, 0)
-
+  const start = new Date(base); start.setHours(sh, sm, 0, 0)
+  const end   = new Date(base); end.setHours(eh, em, 0, 0)
   return {
     id: task.id,
     title: task.title,
-    start,
-    end,
+    start, end,
     backgroundColor: task.status ? '#059669' : hardnessColor(task.hardness_level),
     borderColor: 'transparent',
     textColor: '#fff',
-    extendedProps: {
-      status: task.status,
-      hardness_level: task.hardness_level,
-      user_id: task.user_id,
-      date: task.date,
-    },
+    extendedProps: { status: task.status, hardness_level: task.hardness_level, user_id: task.user_id, date: task.date },
   }
 }
 
@@ -59,48 +48,44 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({ tasks, userId, date })
   const calendarRef = useRef<FullCalendar>(null)
   const updateTime = useUpdateTaskTime()
   const toggleTask = useToggleTask()
+  const { blocks } = useTimetable()
 
-  const [popover, setPopover] = useState<PopoverState>({
-    visible: false,
-    x: 0,
-    y: 0,
-    startTime: '',
-    endTime: '',
-  })
+  const [popover, setPopover] = useState<PopoverState>({ visible: false, startTime: '09:00', endTime: '10:00' })
 
-  const events: EventInput[] = tasks
+  // ── Mission events (user's daily tasks) ───────────────────────
+  const missionEvents: EventInput[] = tasks
     .filter((t) => t.start_time && t.end_time)
-    .map(taskToEvent)
+    .map((t) => taskToEvent(t))
+    .filter(Boolean) as EventInput[]
 
-  // ── Drag-to-create handler ─────────────────────────────────
+  // ── Timetable backgroundEvents (read-only recurring blocks) ───
+  const todayDow = new Date(date).getDay()
+  const backgroundEvents: EventInput[] = blocks
+    .filter((b) => b.dayOfWeek === todayDow)
+    .map((b) => ({
+      id: `timetable-${b.id}`,
+      title: b.label,
+      start: `${date}T${b.startTime}:00`,
+      end: `${date}T${b.endTime}:00`,
+      display: 'background',
+      backgroundColor: b.color,
+      classNames: ['timetable-bg-event'],
+    }))
+
   const handleSelect = useCallback((arg: DateSelectArg) => {
-    // Position popover near the selection
-    // We use a fixed centered popover approach for reliability
-    setPopover({
-      visible: true,
-      x: 0,
-      y: 0,
-      startTime: toHHMM(arg.start),
-      endTime: toHHMM(arg.end),
-    })
-    // Deselect to clear the highlight
+    setPopover({ visible: true, startTime: toHHMM(arg.start), endTime: toHHMM(arg.end) })
     calendarRef.current?.getApi().unselect()
   }, [])
 
-  // ── Event click: toggle completion ────────────────────────
   const handleEventClick = useCallback((arg: EventClickArg) => {
+    if (arg.event.id.startsWith('timetable-')) return // read-only
     const task = tasks.find((t) => t.id === arg.event.id)
     if (!task) return
-    toggleTask.mutate({
-      id: task.id,
-      status: !task.status,
-      userId: task.user_id,
-      date: task.date,
-    })
+    toggleTask.mutate({ id: task.id, status: !task.status, userId: task.user_id, date: task.date })
   }, [tasks, toggleTask])
 
-  // ── Event drag/resize: update time in DB ──────────────────
   const handleEventChange = useCallback((arg: EventChangeArg) => {
+    if (arg.event.id.startsWith('timetable-')) { arg.revert(); return }
     const { start, end } = arg.event
     if (!start || !end) return
     updateTime.mutate({
@@ -115,26 +100,28 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({ tasks, userId, date })
   return (
     <div className="bg-card rounded-card shadow-card overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-bg-dark flex items-center justify-between">
-        <div>
-          <h2 className="font-bold text-text-heading text-base">📅 Day Timeline</h2>
-          <p className="text-xs text-text-muted mt-0.5">
-            Drag to create blocks · Click to toggle completion · Drag events to reschedule
-          </p>
+      <div className="px-6 py-4 border-b border-bg-dark flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays size={16} strokeWidth={2} className="text-accent-violet" />
+          <div>
+            <h2 className="font-bold text-text-heading text-base">Day Timeline</h2>
+            <p className="text-xs text-text-muted mt-0.5">
+              Drag to create · Click to toggle · Drag to reschedule
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3 text-xs font-semibold text-text-muted">
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />
-            Done
+            <CheckCircle2 size={11} className="text-green-500" />Done
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
-            Medium
+            <Circle size={11} className="text-amber-400" />Pending
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
-            Hard
-          </span>
+          {blocks.length > 0 && (
+            <span className="flex items-center gap-1.5">
+              <Info size={11} className="text-violet-400" />Timetable
+            </span>
+          )}
         </div>
       </div>
 
@@ -145,22 +132,14 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({ tasks, userId, date })
           plugins={[timeGridPlugin, interactionPlugin]}
           initialView="timeGridDay"
           initialDate={date}
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'timeGridDay,timeGridWeek',
-          }}
+          headerToolbar={{ left: 'prev,next today', center: 'title', right: 'timeGridDay,timeGridWeek' }}
           height={560}
           slotMinTime="05:00:00"
           slotMaxTime="24:00:00"
           slotDuration="00:30:00"
           snapDuration="00:15:00"
-          selectable
-          selectMirror
-          editable
-          droppable
-          nowIndicator
-          events={events}
+          selectable selectMirror editable droppable nowIndicator
+          events={[...missionEvents, ...backgroundEvents]}
           select={handleSelect}
           eventClick={handleEventClick}
           eventChange={handleEventChange}
@@ -170,19 +149,14 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({ tasks, userId, date })
         />
       </div>
 
-      {/* Add Task Popover (modal-style) */}
+      {/* Add Mission Popover */}
       {popover.visible && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-40 modal-backdrop bg-black/20"
             onClick={() => setPopover((p) => ({ ...p, visible: false }))}
           />
-          {/* Popover card */}
-          <div
-            className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                        w-[340px] bg-card rounded-card shadow-float-lg p-6 animate-scale-in"
-          >
+          <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] bg-card rounded-card shadow-float-lg p-6 animate-scale-in">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-text-heading">New Mission</h3>
               <button

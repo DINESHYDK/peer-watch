@@ -1,28 +1,69 @@
 import React, { useState } from 'react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAddTask } from '@/hooks/useTasks'
 
+// ── Reusable custom time dropdowns ────────────────────────────
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTES = ['00', '15', '30', '45']
+
+const selectCls =
+  'rounded-lg border-2 border-bg-dark bg-bg px-2 py-1.5 text-sm font-semibold ' +
+  'text-text-heading focus:outline-none focus:border-accent-violet transition-colors cursor-pointer'
+
+interface TimeDropdownProps {
+  value: string       // 'HH:MM'
+  onChange: (v: string) => void
+  id: string
+  disabled?: boolean
+}
+
+const TimeDropdown: React.FC<TimeDropdownProps> = ({ value, onChange, id, disabled }) => {
+  const [h, m] = value ? value.split(':') : ['09', '00']
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        id={`${id}-h`}
+        value={h}
+        disabled={disabled}
+        onChange={(e) => onChange(`${e.target.value}:${m}`)}
+        className={selectCls}
+        aria-label="Hour"
+      >
+        {HOURS.map((v) => <option key={v}>{v}</option>)}
+      </select>
+      <span className="font-bold text-text-muted text-sm select-none">:</span>
+      <select
+        id={`${id}-m`}
+        value={m}
+        disabled={disabled}
+        onChange={(e) => onChange(`${h}:${e.target.value}`)}
+        className={selectCls}
+        aria-label="Minute"
+      >
+        {MINUTES.map((v) => <option key={v}>{v}</option>)}
+      </select>
+    </div>
+  )
+}
+
 interface AddTaskFormProps {
   userId: string
-  prefillStart?: string  // HH:MM
-  prefillEnd?: string    // HH:MM
+  prefillStart?: string
+  prefillEnd?: string
   prefillDate?: string
   onClose?: () => void
   compact?: boolean
 }
 
 export const AddTaskForm: React.FC<AddTaskFormProps> = ({
-  userId,
-  prefillStart,
-  prefillEnd,
-  prefillDate,
-  onClose,
-  compact = false,
+  userId, prefillStart, prefillEnd, prefillDate, onClose, compact = false,
 }) => {
   const [title, setTitle] = useState('')
   const [hardness, setHardness] = useState(5)
-  const [start, setStart] = useState(prefillStart ?? '')
-  const [end, setEnd] = useState(prefillEnd ?? '')
+  const [start, setStart] = useState(prefillStart ?? '09:00')
+  const [end, setEnd] = useState(prefillEnd ?? '10:00')
+  const [timed, setTimed] = useState(!!(prefillStart && prefillEnd))
 
   const addTask = useAddTask()
 
@@ -33,8 +74,8 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
       user_id: userId,
       title: title.trim(),
       hardness_level: hardness,
-      start_time: start || null,
-      end_time: end || null,
+      start_time: timed ? start : null,
+      end_time: timed ? end : null,
       date: prefillDate,
     })
     setTitle('')
@@ -78,47 +119,44 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
           </span>
         </label>
         <input
-          type="range"
-          min={1}
-          max={10}
-          value={hardness}
+          type="range" min={1} max={10} value={hardness}
           onChange={(e) => setHardness(Number(e.target.value))}
           className="w-full accent-accent-violet cursor-pointer h-2 rounded-pill"
           id="add-task-hardness"
         />
         <div className="flex justify-between text-xs text-text-muted mt-1 px-0.5">
-          <span>Easy</span>
-          <span>Extreme</span>
+          <span>Easy</span><span>Extreme</span>
         </div>
       </div>
 
-      {/* Time range (optional) */}
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className="block text-xs font-semibold text-text-muted mb-1.5">
-            Start Time
-          </label>
+      {/* Time toggle */}
+      <div>
+        <label className="flex items-center gap-2 cursor-pointer w-fit">
           <input
-            type="time"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-            className="w-full rounded-card-sm border-2 border-bg-dark bg-bg px-3 py-2 text-sm text-text-heading focus:outline-none focus:border-accent-violet transition-colors"
-            id="add-task-start"
+            type="checkbox"
+            checked={timed}
+            onChange={(e) => setTimed(e.target.checked)}
+            className="accent-accent-violet w-4 h-4 rounded cursor-pointer"
+            id="add-task-timed"
           />
-        </div>
-        <div className="flex-1">
-          <label className="block text-xs font-semibold text-text-muted mb-1.5">
-            End Time
-          </label>
-          <input
-            type="time"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-            className="w-full rounded-card-sm border-2 border-bg-dark bg-bg px-3 py-2 text-sm text-text-heading focus:outline-none focus:border-accent-violet transition-colors"
-            id="add-task-end"
-          />
-        </div>
+          <span className="text-xs font-semibold text-text-muted">Schedule a time slot</span>
+        </label>
       </div>
+
+      {/* Time selects — custom dropdowns, no native time input */}
+      {timed && (
+        <div className="flex items-center gap-4 bg-bg rounded-card-sm p-3">
+          <div>
+            <p className="text-xs font-semibold text-text-muted mb-1.5">Start</p>
+            <TimeDropdown value={start} onChange={setStart} id="add-task-start" />
+          </div>
+          <span className="text-text-muted font-bold mt-5">–</span>
+          <div>
+            <p className="text-xs font-semibold text-text-muted mb-1.5">End</p>
+            <TimeDropdown value={end} onChange={setEnd} id="add-task-end" />
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-2 pt-1">
@@ -133,10 +171,11 @@ export const AddTaskForm: React.FC<AddTaskFormProps> = ({
           size="sm"
           loading={addTask.isPending}
           disabled={!title.trim()}
+          icon={<Plus size={14} />}
           fullWidth
           id="add-task-submit"
         >
-          + Add Mission
+          Add Mission
         </Button>
       </div>
     </form>
