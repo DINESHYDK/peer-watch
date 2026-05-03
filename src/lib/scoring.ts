@@ -70,16 +70,16 @@ export function computeStatusTag(
 
 export const STATUS_TAG_META: Record<
   StatusTag,
-  { label: string; color: string; bg: string; emoji: string }
+  { label: string; color: string; bg: string }
 > = {
-  'The Titan':    { label: 'The Titan',    color: '#5B21B6', bg: '#EDE9FE', emoji: '⚡' },
-  'Grindmaster':  { label: 'Grindmaster',  color: '#5B21B6', bg: '#EDE9FE', emoji: '🔥' },
-  'Consistent':   { label: 'Consistent',   color: '#059669', bg: '#D1FAE5', emoji: '✅' },
-  'Slipping':     { label: 'Slipping',     color: '#D97706', bg: '#FEF3C7', emoji: '⚠️' },
-  'The Culprit':  { label: 'The Culprit',  color: '#DC2626', bg: '#FEE2E2', emoji: '💀' },
-  'Sloth':        { label: 'Sloth',        color: '#DC2626', bg: '#FEE2E2', emoji: '🦥' },
-  'On Track':     { label: 'On Track',     color: '#2563EB', bg: '#DBEAFE', emoji: '🎯' },
-  'New':          { label: 'New',          color: '#6B7280', bg: '#F3F4F6', emoji: '👋' },
+  'The Titan':    { label: 'The Titan',    color: '#5B21B6', bg: '#EDE9FE' },
+  'Grindmaster':  { label: 'Grindmaster',  color: '#5B21B6', bg: '#EDE9FE' },
+  'Consistent':   { label: 'Consistent',   color: '#059669', bg: '#D1FAE5' },
+  'Slipping':     { label: 'Slipping',     color: '#D97706', bg: '#FEF3C7' },
+  'The Culprit':  { label: 'The Culprit',  color: '#DC2626', bg: '#FEE2E2' },
+  'Sloth':        { label: 'Sloth',        color: '#DC2626', bg: '#FEE2E2' },
+  'On Track':     { label: 'On Track',     color: '#2563EB', bg: '#DBEAFE' },
+  'New':          { label: 'New',          color: '#6B7280', bg: '#F3F4F6' },
 }
 
 /**
