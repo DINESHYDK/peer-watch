@@ -4,6 +4,7 @@ import { StarRating } from '@/components/ui/StarRating'
 import { Button } from '@/components/ui/Button'
 import { useSubmitRating } from '@/hooks/usePeerRating'
 import { CheckCircle2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface StarRatingInputProps {
   raterId: string; rateeId: string; groupId: string
@@ -24,6 +25,15 @@ export const StarRatingInput: React.FC<StarRatingInputProps> = ({
     if (rating === 0) return
     try {
       await submitRating.mutateAsync({ rater_id: raterId, ratee_id: rateeId, group_id: groupId, date, rating, comment: comment.trim() || undefined })
+      
+      // Send notification to ratee
+      await supabase.from('notifications').insert({
+        user_id: rateeId,
+        group_id: groupId,
+        type: 'rating',
+        content: `Someone rated your day ${rating} stars${comment ? ` — "${comment}"` : ''}`
+      })
+
       toast.success('Rating submitted successfully!')
       onSuccess?.()
     } catch (err: unknown) {
