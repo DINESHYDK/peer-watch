@@ -2,63 +2,41 @@ import React, { useState } from 'react'
 import { StarRating } from '@/components/ui/StarRating'
 import { Button } from '@/components/ui/Button'
 import { useSubmitRating } from '@/hooks/usePeerRating'
+import { CheckCircle2 } from 'lucide-react'
 
 interface StarRatingInputProps {
-  raterId: string
-  rateeId: string
-  groupId: string
-  date: string
-  existingRating?: number | null
-  onSuccess?: () => void
+  raterId: string; rateeId: string; groupId: string
+  date: string; existingRating?: number | null; onSuccess?: () => void
 }
 
+const RATING_LABELS = ['', 'Needs serious work', 'Below expectations', 'Decent effort', 'Solid grind!', 'Absolute titan!']
+
 export const StarRatingInput: React.FC<StarRatingInputProps> = ({
-  raterId,
-  rateeId,
-  groupId,
-  date,
-  existingRating,
-  onSuccess,
+  raterId, rateeId, groupId, date, existingRating, onSuccess,
 }) => {
   const [rating, setRating] = useState(existingRating ?? 0)
   const [comment, setComment] = useState('')
   const submitRating = useSubmitRating()
+  const alreadyRated = !!existingRating
 
   const handleSubmit = async () => {
     if (rating === 0) return
-    await submitRating.mutateAsync({
-      rater_id: raterId,
-      ratee_id: rateeId,
-      group_id: groupId,
-      date,
-      rating,
-      comment: comment.trim() || undefined,
-    })
+    await submitRating.mutateAsync({ rater_id: raterId, ratee_id: rateeId, group_id: groupId, date, rating, comment: comment.trim() || undefined })
     onSuccess?.()
   }
 
-  const alreadyRated = !!existingRating
-
   return (
     <div className="space-y-4">
-      {/* Rating prompt */}
       <div className="text-center space-y-2">
         <p className="text-sm font-semibold text-text-body">
           {alreadyRated ? 'Update your rating' : 'How did they do today?'}
         </p>
         <StarRating value={rating} onChange={setRating} size="lg" />
         {rating > 0 && (
-          <p className="text-xs text-text-muted animate-fade-in">
-            {rating === 1 ? '😴 Needs serious work'
-              : rating === 2 ? '😕 Below expectations'
-              : rating === 3 ? '😐 Decent effort'
-              : rating === 4 ? '🙌 Solid grind!'
-              : '🔥 Absolute titan!'}
-          </p>
+          <p className="text-xs text-text-muted animate-fade-in">{RATING_LABELS[rating]}</p>
         )}
       </div>
 
-      {/* Comment box */}
       <div>
         <label className="block text-xs font-semibold text-text-muted mb-1.5">
           Peer pressure / encouragement (optional)
@@ -73,22 +51,15 @@ export const StarRatingInput: React.FC<StarRatingInputProps> = ({
         />
       </div>
 
-      {/* Submit */}
-      <Button
-        variant="primary"
-        fullWidth
-        onClick={handleSubmit}
-        loading={submitRating.isPending}
-        disabled={rating === 0}
-        id="tribunal-submit"
-      >
-        {alreadyRated ? '✏️ Update Rating' : '⚖️ Submit Verdict'}
+      <Button variant="primary" fullWidth onClick={handleSubmit} loading={submitRating.isPending} disabled={rating === 0} id="tribunal-submit">
+        {alreadyRated ? 'Update Rating' : 'Submit Verdict'}
       </Button>
 
       {submitRating.isSuccess && (
-        <p className="text-center text-xs text-status-consistent font-semibold animate-fade-in">
-          ✅ Verdict submitted!
-        </p>
+        <div className="flex items-center justify-center gap-2 animate-fade-in">
+          <CheckCircle2 size={14} className="text-status-consistent" />
+          <p className="text-xs text-status-consistent font-semibold">Verdict submitted!</p>
+        </div>
       )}
     </div>
   )

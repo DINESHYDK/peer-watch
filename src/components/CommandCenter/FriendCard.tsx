@@ -1,4 +1,5 @@
 import React from 'react'
+import { Flame } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { StatusBadge } from '@/components/ui/Badge'
@@ -15,23 +16,8 @@ interface FriendCardProps {
 
 const STREAK_DAYS = 21
 
-function FlameIcon({ lit }: { lit: boolean }) {
-  return (
-    <span
-      className={[
-        'text-xs transition-all duration-300',
-        lit ? 'animate-flame opacity-100' : 'opacity-20 grayscale',
-      ].join(' ')}
-      title={lit ? 'Active day' : 'Missed day'}
-    >
-      🔥
-    </span>
-  )
-}
-
 export const FriendCard: React.FC<FriendCardProps> = ({ member, isCurrentUser }) => {
   const { openTribunal } = useAppStore()
-
   const totalTasks = member.tasks.length
   const completedTasks = member.tasks.filter((t) => t.status).length
   const completionPct =
@@ -40,34 +26,22 @@ export const FriendCard: React.FC<FriendCardProps> = ({ member, isCurrentUser })
 
   const today = new Date().toISOString().split('T')[0]
   const alreadyRated = member.myRating !== null
-
-  // Build 21-day streak array (last 21 natural days — simplified from streak count)
   const streakCount = member.current_streak
-  const streakDays = Array.from({ length: STREAK_DAYS }, (_, i) =>
-    i < Math.min(streakCount, STREAK_DAYS)
-  ).reverse()
+  const streakDays = Array.from({ length: STREAK_DAYS }, (_, i) => i < Math.min(streakCount, STREAK_DAYS)).reverse()
 
   return (
-    <Card
-      hover={!isCurrentUser}
-      className="flex flex-col gap-4 relative overflow-hidden animate-fade-in"
-    >
-      {/* Current user badge */}
+    <Card hover={!isCurrentUser} className="flex flex-col gap-4 relative overflow-hidden animate-fade-in">
       {isCurrentUser && (
         <div className="absolute top-4 right-4">
-          <span className="text-xs font-bold text-accent-violet bg-accent-violet-dim px-2.5 py-0.5 rounded-pill">
-            You
-          </span>
+          <span className="text-xs font-bold text-accent-violet bg-accent-violet-dim px-2.5 py-0.5 rounded-pill">You</span>
         </div>
       )}
 
-      {/* Header: Avatar + Name + Status */}
+      {/* Header */}
       <div className="flex items-start gap-3">
         <Avatar src={member.avatar_url} name={member.name} size="lg" />
         <div className="flex-1 min-w-0 pt-0.5">
-          <h3 className="font-bold text-text-heading text-base leading-tight truncate">
-            {member.name}
-          </h3>
+          <h3 className="font-bold text-text-heading text-base leading-tight truncate">{member.name}</h3>
           <p className="text-xs text-text-muted font-medium">@{member.nickname}</p>
           <div className="mt-2">
             <StatusBadge tag={(member.status_tag as StatusTag) ?? 'New'} />
@@ -75,52 +49,51 @@ export const FriendCard: React.FC<FriendCardProps> = ({ member, isCurrentUser })
         </div>
       </div>
 
-      {/* 21-day streak flames */}
+      {/* 21-day streak */}
       <div>
         <p className="text-xs font-semibold text-text-muted mb-2">21-Day Streak</p>
         <div className="flex flex-wrap gap-0.5">
           {streakDays.map((lit, i) => (
-            <FlameIcon key={i} lit={lit} />
+            <Flame
+              key={i}
+              size={13}
+              strokeWidth={1.5}
+              className={lit ? 'text-orange-500 animate-flame' : 'text-text-light opacity-30'}
+            />
           ))}
         </div>
-        <p className="text-xs font-bold text-accent-violet mt-1">
-          🔥 {member.current_streak} day{member.current_streak !== 1 ? 's' : ''}
-        </p>
+        <div className="flex items-center gap-1 mt-1">
+          <Flame size={12} strokeWidth={2} className="text-orange-500" />
+          <p className="text-xs font-bold text-accent-violet">
+            {member.current_streak} day{member.current_streak !== 1 ? 's' : ''}
+          </p>
+        </div>
       </div>
 
-      {/* Task progress */}
+      {/* Progress */}
       <div>
-        <ProgressBar
-          value={completionPct}
-          completed={completedTasks}
-          total={totalTasks}
-          showLabel
-        />
-        {totalTasks === 0 && (
-          <p className="text-xs text-text-muted mt-1">No tasks logged today</p>
-        )}
+        <ProgressBar value={completionPct} completed={completedTasks} total={totalTasks} showLabel />
+        {totalTasks === 0 && <p className="text-xs text-text-muted mt-1">No tasks logged today</p>}
       </div>
 
       {/* Score chip */}
       {member.todaySummary && (
         <div className="flex items-center gap-2 bg-bg rounded-pill px-3 py-1.5 w-fit">
-          <span className="text-xs text-text-muted font-medium">Today's Score</span>
+          <span className="text-xs text-text-muted font-medium">Today</span>
           <span className="text-xs font-bold text-accent-violet">
-            {Math.round(member.todaySummary.daily_score).toLocaleString()}
+            {Math.round(member.todaySummary.daily_score).toLocaleString()} pts
           </span>
         </div>
       )}
 
-      {/* Review button */}
       {!isCurrentUser && (
         <Button
           variant={alreadyRated ? 'secondary' : 'primary'}
-          size="sm"
-          fullWidth
+          size="sm" fullWidth
           onClick={() => openTribunal(member.id, today)}
           id={`tribunal-btn-${member.id}`}
         >
-          {alreadyRated ? '✅ Reviewed' : '⚖️ Open Tribunal'}
+          {alreadyRated ? 'Reviewed' : 'Open Tribunal'}
         </Button>
       )}
     </Card>
