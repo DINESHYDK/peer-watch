@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import toast from 'react-hot-toast'
 import { StarRating } from '@/components/ui/StarRating'
 import { Button } from '@/components/ui/Button'
 import { useSubmitRating } from '@/hooks/usePeerRating'
@@ -21,8 +22,13 @@ export const StarRatingInput: React.FC<StarRatingInputProps> = ({
 
   const handleSubmit = async () => {
     if (rating === 0) return
-    await submitRating.mutateAsync({ rater_id: raterId, ratee_id: rateeId, group_id: groupId, date, rating, comment: comment.trim() || undefined })
-    onSuccess?.()
+    try {
+      await submitRating.mutateAsync({ rater_id: raterId, ratee_id: rateeId, group_id: groupId, date, rating, comment: comment.trim() || undefined })
+      toast.success('Rating submitted successfully!')
+      onSuccess?.()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to submit rating')
+    }
   }
 
   return (
