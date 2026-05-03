@@ -7,6 +7,7 @@ interface AuthState {
   session: Session | null
   user: UserRow | null
   loading: boolean
+  refetch: () => Promise<void> | void
 }
 
 export function useAuth(): AuthState {

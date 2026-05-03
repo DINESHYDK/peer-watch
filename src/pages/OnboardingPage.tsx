@@ -14,6 +14,8 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ userId, onComple
   const [step, setStep] = useState<Step>('profile')
   const [name, setName] = useState('')
   const [nickname, setNickname] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarLoading, setAvatarLoading] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [groupMode, setGroupMode] = useState<'create' | 'join'>('create')
@@ -25,10 +27,31 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ userId, onComple
   const inputCls =
     'w-full rounded-card-sm border-2 border-bg-dark bg-bg px-4 py-2.5 text-sm text-text-heading placeholder:text-text-muted focus:outline-none focus:border-accent-violet transition-colors'
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarLoading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${userId}-${Math.random()}.${fileExt}`
+      const filePath = `${userId}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file)
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+      setAvatarUrl(data.publicUrl)
+    } catch (err: unknown) {
+      setProfileError(err instanceof Error ? err.message : 'Failed to upload avatar')
+    } finally {
+      setAvatarLoading(false)
+    }
+  }
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); if (!name.trim() || !nickname.trim()) return
     setProfileLoading(true); setProfileError(null)
-    const { error } = await supabase.from('users').insert({ id: userId, name: name.trim(), nickname: nickname.trim() })
+    const { error } = await supabase.from('users').insert({ id: userId, name: name.trim(), nickname: nickname.trim(), avatar_url: avatarUrl })
     setProfileLoading(false)
     if (error) setProfileError(error.message)
     else setStep('group')
@@ -38,12 +61,12 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ userId, onComple
     e.preventDefault(); setGroupLoading(true); setGroupError(null)
     try {
       if (groupMode === 'create') {
-        const { data: group, error: gErr } = await supabase.from('groups').insert({ name: groupName.trim(), leader_id: userId }).select().single()
-        if (gErr) throw gErr
+        const { data: group, error: gErr } = await supabase.from('groups').insert({ name: groupName.trim(), leader_id: userId }).select().single() as unknown as { data: { id: string } | null; error: any }
+        if (gErr || !group) throw gErr || new Error('Failed to create group')
         const { error: mErr } = await supabase.from('group_members').insert({ user_id: userId, group_id: group.id })
         if (mErr) throw mErr
       } else {
-        const { data: group, error: gErr } = await supabase.from('groups').select('id').eq('invite_code', inviteCode.trim()).single()
+        const { data: group, error: gErr } = await supabase.from('groups').select('id').eq('invite_code', inviteCode.trim()).single() as unknown as { data: { id: string } | null; error: any }
         if (gErr || !group) throw new Error('Invalid invite code')
         const { error: mErr } = await supabase.from('group_members').insert({ user_id: userId, group_id: group.id })
         if (mErr) throw mErr
@@ -85,6 +108,27 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ userId, onComple
                 <h2 className="font-bold text-text-heading text-lg">Create your profile</h2>
               </div>
               <p className="text-xs text-text-muted mb-5">Your crew will see this.</p>
+              
+              <div className="mb-4 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-bg-dark flex items-center justify-center overflow-hidden border-2 border-accent-violet/20">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Avatar preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={20} className="text-text-muted" />
+                  )}
+                </div>
+                <label className="text-xs text-accent-violet font-semibold border border-accent-violet/40 rounded-pill px-3 py-1 hover:bg-accent-violet-dim transition-colors cursor-pointer">
+                  {avatarLoading ? 'Uploading...' : 'Upload Avatar'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={avatarLoading}
+                  />
+                </label>
+              </div>
+
               <form onSubmit={handleProfileSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-text-heading mb-1.5">Full Name</label>

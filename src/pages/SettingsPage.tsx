@@ -156,6 +156,31 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ user, groups, onGrou
   const [name, setName] = useState(user.name)
   const [nickname, setNickname] = useState(user.nickname)
   const [saving, setSaving] = useState(false)
+  const [avatarLoading, setAvatarLoading] = useState(false)
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarLoading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`
+      const filePath = `${user.id}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file)
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+      const { error: updateError } = await supabase.from('users').update({ avatar_url: data.publicUrl }).eq('id', user.id)
+      if (updateError) throw updateError
+      
+      toast.success('Avatar updated! (Might take a moment to reflect)')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload avatar')
+    } finally {
+      setAvatarLoading(false)
+    }
+  }
 
   const handleSaveProfile = async () => {
     setSaving(true)
@@ -178,7 +203,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ user, groups, onGrou
     if (!inviteCode.trim()) return
     setJoinLoading(true)
     const { data: group, error: gErr } = await supabase
-      .from('groups').select('id, name').eq('invite_code', inviteCode.trim()).single()
+      .from('groups').select('id, name').eq('invite_code', inviteCode.trim()).single() as unknown as { data: { id: string; name: string } | null; error: any }
     if (gErr || !group) { toast.error('Invalid invite code'); setJoinLoading(false); return }
     const { error: mErr } = await supabase.from('group_members').insert({ user_id: user.id, group_id: group.id })
     setJoinLoading(false)
@@ -196,8 +221,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ user, groups, onGrou
     if (!createName.trim()) return
     setCreateLoading(true)
     const { data: group, error: gErr } = await supabase
-      .from('groups').insert({ name: createName.trim(), leader_id: user.id }).select().single()
-    if (gErr) { toast.error(gErr.message); setCreateLoading(false); return }
+      .from('groups').insert({ name: createName.trim(), leader_id: user.id }).select().single() as unknown as { data: GroupRow | null; error: any }
+    if (gErr || !group) { toast.error(gErr?.message || 'Failed'); setCreateLoading(false); return }
     const { error: mErr } = await supabase.from('group_members').insert({ user_id: user.id, group_id: group.id })
     setCreateLoading(false)
     if (mErr) toast.error(mErr.message)
@@ -270,10 +295,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ user, groups, onGrou
             <Avatar src={user.avatar_url} name={user.name} size="xl" />
             <div>
               <p className="text-sm font-bold text-text-heading">Profile Photo</p>
-              <p className="text-xs text-text-muted mt-1">Avatar upload coming soon.</p>
-              <button className="mt-2 text-xs text-accent-violet font-semibold border border-accent-violet/40 rounded-pill px-3 py-1 hover:bg-accent-violet-dim transition-colors opacity-50 cursor-not-allowed">
-                Upload Photo
-              </button>
+              <p className="text-xs text-text-muted mt-1">Upload a new avatar.</p>
+              <label className="mt-2 inline-block text-xs text-accent-violet font-semibold border border-accent-violet/40 rounded-pill px-3 py-1 hover:bg-accent-violet-dim transition-colors cursor-pointer">
+                {avatarLoading ? 'Uploading...' : 'Upload Photo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                  disabled={avatarLoading}
+                />
+              </label>
             </div>
           </div>
           <hr className="border-bg-dark" />

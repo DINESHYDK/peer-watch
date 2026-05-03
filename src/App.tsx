@@ -23,7 +23,7 @@ function AppInner() {
       .from('group_members').select('group_id').eq('user_id', userId)
     const ids = (memberships ?? []).map((m) => m.group_id)
     if (!ids.length) { setGroups([]); setGroupsLoading(false); return }
-    const { data } = await supabase.from('groups').select('*').in('id', ids)
+    const { data } = await supabase.from('groups').select('*').in('id', ids) as unknown as { data: GroupRow[] | null }
     const g = data ?? []
     setGroups(g)
     if (!activeGroupId && g.length > 0) setActiveGroupId(g[0].id)
