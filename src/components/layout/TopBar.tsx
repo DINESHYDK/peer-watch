@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import type { UserRow } from '@/types/database.types'
 import type { StatusTag } from '@/lib/scoring'
 import { NotificationCenter } from './NotificationCenter'
+import { useNotifications } from '@/hooks/useNotifications'
 
 interface TopBarProps {
   user: UserRow
@@ -16,6 +17,9 @@ export const TopBar: React.FC<TopBarProps> = ({ user }) => {
   const { activeGroupId } = useAppStore()
   const [notifOpen, setNotifOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
+  
+  const { data: notifications = [] } = useNotifications(user.id)
+  const hasUnread = notifications.some(n => !n.is_read)
 
   const handleSignOut = () => supabase.auth.signOut()
 
@@ -56,11 +60,11 @@ export const TopBar: React.FC<TopBarProps> = ({ user }) => {
           >
             <Bell size={18} strokeWidth={2} className="text-text-muted" />
             {/* Unread dot */}
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            {hasUnread && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
           </button>
 
           {notifOpen && (
-            <NotificationCenter onClose={() => setNotifOpen(false)} />
+            <NotificationCenter onClose={() => setNotifOpen(false)} userId={user.id} />
           )}
         </div>
 
