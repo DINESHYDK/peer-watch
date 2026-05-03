@@ -44,5 +44,5 @@ export function useAuth(): AuthState {
     setLoading(false)
   }
 
-  return { session, user, loading }
+  return { session, user, loading, refetch: () => session?.user && fetchProfile(session.user.id) }
 }

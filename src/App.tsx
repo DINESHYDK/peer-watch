@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase'
 import type { GroupRow } from '@/types/database.types'
 
 function AppInner() {
-  const { session, user, loading } = useAuth()
+  const { session, user, loading, refetch } = useAuth()
   const { setActiveGroupId, activeGroupId } = useAppStore()
   const [groups, setGroups] = useState<GroupRow[]>([])
   const [groupsLoading, setGroupsLoading] = useState(false)
@@ -54,7 +54,10 @@ function AppInner() {
       <OnboardingPage
         userId={session.user.id}
         // Navigate to /dashboard after onboarding — no full reload
-        onComplete={() => fetchGroups(session.user.id)}
+        onComplete={() => {
+          refetch()
+          fetchGroups(session.user.id)
+        }}
       />
     )
   }
