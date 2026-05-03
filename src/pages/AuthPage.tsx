@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Mail, Lock, ArrowRight, Sparkles } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 
 type Mode = 'signin' | 'signup'
@@ -18,22 +19,32 @@ export const AuthPage: React.FC = () => {
       if (mode === 'signup') {
         const { error: err } = await supabase.auth.signUp({ email, password })
         if (err) throw err
+        toast.success('Account created successfully!')
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password })
         if (err) throw err
+        toast.success('Welcome back!')
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const msg = err instanceof Error ? err.message : 'Something went wrong'
+      // Map common Supabase errors to friendlier messages
+      const friendly =
+        msg.includes('Invalid login') ? 'Incorrect email or password' :
+        msg.includes('already registered') ? 'Email already in use' :
+        msg.includes('Password should be') ? 'Password must be at least 6 characters' :
+        msg
+      setError(friendly)
+      toast.error(friendly)
     } finally { setLoading(false) }
   }
 
   const handleMagicLink = async () => {
-    if (!email) { setError('Enter your email first'); return }
+    if (!email) { setError('Enter your email first'); toast.error('Enter your email first'); return }
     setLoading(true); setError(null)
     const { error: err } = await supabase.auth.signInWithOtp({ email })
     setLoading(false)
-    if (err) setError(err.message)
-    else setMagicSent(true)
+    if (err) { setError(err.message); toast.error(err.message) }
+    else { setMagicSent(true); toast.success('Magic link sent! Check your inbox.') }
   }
 
   return (

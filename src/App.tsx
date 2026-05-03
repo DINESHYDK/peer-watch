@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'react-hot-toast'
 import { queryClient } from '@/lib/queryClient'
 import { useAuth } from '@/hooks/useAuth'
 import { AppRouter } from '@/router'
@@ -25,7 +26,6 @@ function AppInner() {
     const { data } = await supabase.from('groups').select('*').in('id', ids)
     const g = data ?? []
     setGroups(g)
-    // Only auto-select if no group is currently active
     if (!activeGroupId && g.length > 0) setActiveGroupId(g[0].id)
     setGroupsLoading(false)
   }, [activeGroupId, setActiveGroupId])
@@ -48,12 +48,10 @@ function AppInner() {
 
   if (!session) return <AuthPage />
 
-  // Authenticated but no profile row yet
   if (!user) {
     return (
       <OnboardingPage
         userId={session.user.id}
-        // Navigate to /dashboard after onboarding — no full reload
         onComplete={() => {
           refetch()
           fetchGroups(session.user.id)
@@ -76,6 +74,28 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AppInner />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#FDF5E6',
+              color: '#1E1B4B',
+              borderRadius: '16px',
+              fontSize: '13px',
+              fontWeight: '600',
+              boxShadow: '0 8px 32px rgba(91, 33, 182, 0.12)',
+              border: '1px solid rgba(91, 33, 182, 0.08)',
+              padding: '12px 16px',
+            },
+            success: {
+              iconTheme: { primary: '#059669', secondary: '#D1FAE5' },
+            },
+            error: {
+              iconTheme: { primary: '#DC2626', secondary: '#FEE2E2' },
+            },
+          }}
+        />
       </BrowserRouter>
     </QueryClientProvider>
   )
